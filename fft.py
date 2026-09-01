@@ -61,7 +61,7 @@ for csv_path in input_dir.glob("*.csv"):
     station_name = station_list.get(csv_path.stem, csv_path.stem)
     date_key = csv_path.stem[-4:]
     date_range = date_list.get(date_key, "")
-    suptitle = f"{station_name} ({date_range})" if date_range else station_name
+    suptitle = f"FFT der Zeitserie {station_name} ({date_range})" if date_range else station_name
 
     fig, (ax_full, ax_zoom) = plt.subplots(1, 2, figsize=(14, 5))
 
