@@ -122,3 +122,56 @@ for group in groups:
     output_path = output_dir / f"sinus_fits_{group}.png"
     plt.savefig(output_path)
     plt.close()
+
+stations = ["GRIPS6", "GRIPS7", "GRIPS16"]
+groups = ["2122", "2930"]
+
+for group in groups:
+    fig, axes = plt.subplots(len(stations), 1, figsize=(20, 12), sharex=True)
+    fig.suptitle(f"Sinus-Fits {group}", fontsize=20, fontweight='bold')
+
+    for row, station in enumerate(stations):
+        ax = axes[row]
+
+        matches = list(input_dir.glob(f"*{station}*{group}*.csv"))
+        if not matches:
+            continue
+
+        csv_path = matches[0]
+        df = pd.read_csv(csv_path, parse_dates=["Zulu"])
+        df = df.set_index("Zulu")
+
+        ax.plot(df.index, df["Temp"], alpha=0.5)
+
+        fit_start_time = fit_start_times.get(csv_path.stem)
+
+        if fit_start_time is not None:
+            fit_df = df.between_time(fit_start_time, df.index[-1].strftime("%H:%M:%S"))
+
+            if len(fit_df) > 3:
+                t_seconds = (fit_df.index - fit_df.index[0]).total_seconds().to_numpy()
+                y_values = fit_df["Temp"].to_numpy()
+
+                amplitude_guess = (y_values.max() - y_values.min()) / 2
+                offset_guess = y_values.mean()
+                frequency_guess = frequency_guesses.get(csv_path.stem, 1 / 16200)
+                initial_guess = [amplitude_guess, frequency_guess, 0, offset_guess]
+
+                params, _ = curve_fit(sine_func, t_seconds, y_values, p0=initial_guess, maxfev=10000)
+
+                fit_values = sine_func(t_seconds, *params)
+                ax.plot(fit_df.index, fit_values, label="Sinus-Fit", linestyle="--", color='salmon')
+
+        ax.xaxis.set_major_locator(mdates.MinuteLocator(interval=10))
+        ax.xaxis.set_major_formatter(mdates.DateFormatter("%H:%M"))
+        ax.tick_params(axis="x", rotation=45, labelsize=13)
+        ax.tick_params(axis="y", labelsize=13)
+
+        ax.set_title(f'{csv_path.stem[0:6]}', fontsize=20, fontweight='bold')
+        ax.set_ylabel("Wert", fontsize=20, fontweight='bold')
+
+    plt.tight_layout()
+
+    output_path = output_dir / f"grid_sinus_fits_{group}.png"
+    plt.savefig(output_path)
+    plt.close()
